@@ -1,0 +1,176 @@
+#include "p16f887.inc"
+
+; CONFIG1
+; __config 0xE0F4
+ __CONFIG _CONFIG1, _FOSC_INTRC_NOCLKOUT & _WDTE_OFF & _PWRTE_OFF & _MCLRE_OFF & _CP_OFF & _CPD_OFF & _BOREN_OFF & _IESO_OFF & _FCMEN_OFF & _LVP_OFF
+; CONFIG2
+; __config 0xFFFF
+ __CONFIG _CONFIG2, _BOR4V_BOR40V & _WRT_OFF
+
+ ;***************************
+GPR_VAR        UDATA
+W_TEMP         RES           1      ; w register for context saving (ACCESS)
+STATUS_TEMP    RES           1      ; status used for context saving
+VAR1	       RES	     1 
+PASOS1	       RES	     1
+PASOS2	       RES	     1
+PASOS3	       RES	     1
+PASOS4	       RES	     1
+;***************************
+; Reset Vector
+;***************************
+
+RES_VECT  CODE    0x0000            ; processor reset vector
+    GOTO    START                   ; go to beginning of program
+;***************************
+; TODO INSERT ISR HERE
+ISR_VEC	    CODE	0x0004    
+PUSH:
+    ;BCF	    INTCON , GIE	; GUARDA LOS VALORES TEMPORALES
+    MOVWF   W_TEMP
+    SWAPF   STATUS, W
+    MOVWF   STATUS_TEMP
+    
+ISR:
+    BTFSC   INTCON,T0IF
+    CALL    FUE_TMR0 
+
+POP:
+    SWAPF   STATUS_TEMP, W	; VUELVE A CARGAR LOS VALORES TEMPORALES
+    MOVWF   STATUS
+    SWAPF   W_TEMP, F
+    SWAPF   W_TEMP, W
+    ;BSF	    INTCON , GIE
+    RETFIE
+    
+;------------------SUBRUTINAS DE LA INTERRUPCIÃ?N--------------------------------
+FUE_TMR0 
+    MOVLW   .246
+    MOVWF   TMR0
+    BCF	    INTCON,T0IF
+    INCF    PASOS1,1
+    MOVF    PASOS1,W
+    SUBLW   .0
+    BTFSS   STATUS,C
+    GOTO    DOWN1
+    GOTO    UP1
+    GOTO    PWM2
+DOWN1:
+    BCF	    PORTB, 0
+    GOTO    PWM2
+UP1:
+    BSF	    PORTB, 0
+    GOTO    PWM2
+PWM2:
+    INCF    PASOS2,1
+    MOVF    PASOS2,W
+    SUBLW   .1
+    BTFSS   STATUS,C
+    GOTO    DOWN2
+    GOTO    UP2
+    GOTO    PWM3
+DOWN2:
+    BCF	    PORTB, 1
+    GOTO    PWM3
+UP2:
+    BSF	    PORTB, 1
+    GOTO    PWM3
+PWM3:
+    INCF    PASOS3,1
+    MOVF    PASOS3,W
+    SUBLW   .60
+    BTFSS   STATUS,C
+    GOTO    DOWN3
+    GOTO    UP3
+    GOTO    PWM4
+DOWN3:
+    BCF	    PORTB, 2
+    GOTO    PWM4
+UP3:
+    BSF	    PORTB, 2
+    GOTO    PWM4
+PWM4:
+    INCF    PASOS4,1
+    MOVF    PASOS4,W
+    SUBLW   .65
+    BTFSS   STATUS,C
+    GOTO    DOWN4
+    GOTO    UP4
+    RETURN
+DOWN4:
+    BCF	    PORTB, 3
+    RETURN
+UP4:
+    BSF	    PORTB, 3
+    RETURN
+;***************************
+; MAIN PROGRAM
+;***************************
+
+MAIN_PROG CODE                      ; let linker place main program
+
+START
+   CALL	    CONFIG_IO		; TODO COMO SALIDAS
+   CALL	    CONFIG_RELOJ	; 250KHz
+   CALL	    CONFIG_TMR0		; TIMER0 A 2ms
+   CALL	    CONFIG_INTERRUPT	; INTERRUPT DE TMR1 Y TMR2   
+
+;-------------------------LOOP PRINCIPAL----------------------------------------   
+LOOP
+   ;CALL DISPLAY			; NO HACE NADA EN EL CÃ?DIGO PRINCIPAL
+   NOP
+   GOTO	LOOP
+
+;-------------------------SUBRUTINAS--------------------------------------------
+
+   
+;-----------------------CONFIGURACIÃ?N------------------------------------------
+CONFIG_IO
+   BANKSEL  TRISA	; PONEMOS COMO SALIDAS LOS PUERTOS
+   CLRF	    TRISA
+   CLRF	    TRISB
+   CLRF	    TRISC
+   CLRF	    TRISD
+   CLRF	    TRISE
+   BANKSEL  ANSEL	; CONFIGURAR COMO DIGITAL 
+   CLRF	    ANSEL
+   CLRF	    ANSELH
+   BANKSEL  PORTA	; REINICIAS LOS PUERTOS
+   CLRF	    PORTA
+   CLRF	    PORTB
+   CLRF	    PORTC
+   CLRF	    PORTD
+   CLRF	    PORTE
+   CLRF	    PASOS1
+   CLRF	    PASOS2
+   CLRF	    PASOS3
+   CLRF	    PASOS4
+   RETURN
+CONFIG_RELOJ		    ; RELOJ INTERNO A 8MHz
+   BANKSEL  OSCCON
+   BSF	    OSCCON, IRCF2
+   BSF	    OSCCON, IRCF1
+   BSF	    OSCCON, IRCF0
+   RETURN
+CONFIG_TMR0
+    BANKSEL	TRISA
+    MOVLW	B'00000000'
+    MOVWF	OPTION_REG
+    
+    BANKSEL PORTA
+    MOVLW	.246
+    MOVWF	TMR0
+    BCF INTCON, T0IF
+    RETURN      
+CONFIG_INTERRUPT
+   BANKSEL  TRISA
+   BCF	    PIE1, TMR1IE    ; HABILITAMOS INTERRUPCIONES DE TIMER 1 Y 2
+   BCF	    PIE1, TMR2IE
+   BANKSEL  PORTA
+   BSF	    INTCON, GIE	    ; HABILITAMOS INTERRUPCIONES GLOBALES
+   BCF	    INTCON, PEIE    ; HABILITAMOS INTERRUPCIONES PERIFÃ?RICAS
+   BSF	    INTCON, T0IE
+   BCF	    PIR1, TMR1IF    ; LIMPIAMOS LAS BANDERAS
+   BCF	    PIR1, TMR2IF
+   RETURN    
+    END
