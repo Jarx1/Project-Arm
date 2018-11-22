@@ -1,0 +1,151 @@
+import signal
+import sys
+import threading
+import signal
+import serial  
+import pygame  
+import time, sys
+from tkinter import *
+from time import sleep
+ser= serial.Serial(port='COM15',baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE,bytesize=serial.EIGHTBITS, timeout=0)
+
+joy = []
+root= Tk()
+root.title('Proyecto final')
+Text=StringVar()
+root.geometry('400x400')
+grados = StringVar(value= "")
+recibido1= StringVar(value= "")
+angulo = Entry(root, text=grados)
+
+
+
+def handleJoyEvent(e):  
+    if e.type == pygame.JOYAXISMOTION:  
+        axis = "unknown" 
+        if (e.dict['axis'] == 0):  
+            axis = "Servo 1" 
+   
+        if (e.dict['axis'] == 1):  
+            axis = "Servo 2" 
+   
+        if (e.dict['axis'] == 2):  
+            axis = "Servo 3" 
+   
+        if (e.dict['axis'] == 3):  
+            axis = "Servo 4"
+
+        if (axis != "unknown"):  
+            str = "Axis: %s; Value: %f" % (axis, e.dict['value'])
+            output(str, e.dict['joy'])
+        #Si el servo 1 se activa
+            if (axis == "Servo 1"): 
+                pos = e.dict['value']
+                if (pos >= 0):
+                    pos = round((pos*127)+125)                        
+                elif  pos < 0:
+                    pos = round(pos*(-1)*127)
+                    
+                numero = int((pos))
+                serial = bytes([numero])
+                print('Servo 1', numero)
+                ser.write(serial)
+                
+        #Si el servo 2 se activa
+            if (axis == "Servo 2"):
+                pos = e.dict['value']
+                if (pos >= 0):
+                    pos = round((pos*127)+128)                        
+                elif  pos < 0:
+                    pos = (pos*(-1)*127)
+                numero = int((pos))
+                serial = bytes([numero])
+                print('Servo 1', numero)
+                ser.write(serial)
+                
+        #Si el servo 3 se activa
+            if (axis == "Servo 3"):
+                pos = e.dict['value']
+                if (pos >= 0):
+                    pos = round((pos*127)+128)                        
+                elif  pos < 0:
+                    pos = (pos*(-1)*127)
+                numero = int((pos))
+                serial = bytes([numero])
+                print('Servo 1', numero)
+                ser.write(serial)                
+        #Si el servo 4 se activa
+            if (axis == "Servo 4"):
+                pos = e.dict['value']
+                if (pos >= 0):
+                    pos = round((pos*127)+128)                        
+                elif  pos < 0:
+                    pos = (pos*(-1)*127)
+                numero = int((pos))
+                serial = bytes([numero])
+                print('Servo 1', numero)
+                ser.write(serial)
+    #Comandos para usar los botones             
+    elif e.type == pygame.JOYBUTTONDOWN:  
+        str = "Button: %d" % (e.dict['button'])   
+        # uncomment to debug  
+        output(str, e.dict['joy'])  
+        # Button 0 (trigger) to quit  
+        if (e.dict['button'] == 0):  
+            print ("Bye!\n") 
+            ser.close()  
+            quit()  
+        # Button 1 (trigger) to send byte   
+        if (e.dict['button'] == 1):
+            ser.write(b'00000001')
+            print(ser.write)
+        # Button 2 (trigger) to send byte   
+        if (e.dict['button'] == 2):
+            ser.write(b'00000010')
+            print(ser.write)
+        # Button 3 (trigger) to send byte   
+        if (e.dict['button'] == 3):
+            ser.write(b'00000011')
+            print(ser.write)            
+        # Button 1 (trigger) to send byte   
+        elif (e.dict['button'] == 4):
+            ser.write(b'00000100')
+            print(ser.write)
+    else:
+        pass
+
+# print the joystick position  
+def output(line, stick):  
+    print ("Joystick: %d; %s" % (stick, line))  
+   
+# wait for joystick input  
+def joystickControl():  
+    while True:  
+        e = pygame.event.wait()  
+        if (e.type == pygame.JOYAXISMOTION or e.type == pygame.JOYBUTTONDOWN):  
+            handleJoyEvent(e)  
+   
+# main method  
+def main():  
+    # initialize pygame  
+    pygame.joystick.init()  
+    pygame.display.init()  
+    if not pygame.joystick.get_count():  
+        print ("\nPlease connect a joystick and run again.\n") 
+        quit()  
+    print ("\n%d joystick(s) detected." % pygame.joystick.get_count())  
+    for i in range(pygame.joystick.get_count()):  
+        myjoy = pygame.joystick.Joystick(i)  
+        myjoy.init()  
+        joy.append(myjoy)  
+        print ("Joystick %d: " % (i) + joy[i].get_name())
+    print ("Depress trigger (button 0) to quit.\n") 
+   
+    # run joystick listener loop  
+    joystickControl()  
+   
+# allow use as a module or standalone script  
+if __name__ == "__main__":  
+    main()                 
+
+                
